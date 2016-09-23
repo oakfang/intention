@@ -1,0 +1,15 @@
+{
+  "name": "feffect",
+  "version": "1.0.0",
+  "description": "Create truly pure functional runtime envs",
+  "main": "index.js",
+  "scripts": {
+    "test": "nyc ava -v"
+  },
+  "author": "Alon Niv",
+  "license": "MIT",
+  "devDependencies": {
+    "ava": "^0.16.0",
+    "nyc": "^8.3.0"
+  }
+}
