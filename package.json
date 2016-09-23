@@ -1,13 +1,27 @@
 {
   "name": "feffect",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Create truly pure functional runtime envs",
   "main": "index.js",
   "scripts": {
     "test": "nyc ava -v"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oakfang/feffect.git"
+  },
+  "keywords": [
+    "functional",
+    "monads",
+    "generator",
+    "effects"
+  ],
   "author": "Alon Niv",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/oakfang/feffect/issues"
+  },
+  "homepage": "https://github.com/oakfang/feffect#readme",
   "devDependencies": {
     "ava": "^0.16.0",
     "nyc": "^8.3.0"
