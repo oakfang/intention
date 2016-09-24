@@ -1,7 +1,7 @@
 import test from 'ava';
 import env from '.';
 
-const { effect, impure, run, ensure } = env();
+const { effect, impure, run, ensure, concurrent } = env();
 
 const readFile = (path, options) => effect('read:file', { path, options });
 const log = (...args) => effect('write:log', { args });
@@ -77,4 +77,29 @@ test('Impure explicit return', async t => {
   };
   const n = await run(read(), world);
   t.is(n, 3);
+});
+
+test('concurrent effect type', t => {
+  const effects = [effect('foo'), effect('bar')];
+  t.truthy(ensure(concurrent(effects), 'impure:concurrent', {
+    effects,
+  }));
+});
+
+test('concurrent resolution works', async t => {
+  const effects = [effect('foo'), effect('bar')];
+  const world = {
+    foo(_, resolve) { resolve(5) },
+    bar(_, resolve) { resolve(3) },
+  };
+  let [foo, bar] = await run(concurrent(effects), world);
+  t.is(foo, 5);
+  t.is(bar, 3);
+  world.foo = (_, __, reject) => reject(7);
+  try {
+    await run(concurrent(effects), world);
+    t.fail('Should fail');
+  } catch (e) {
+    t.is(e, 7);
+  }
 });

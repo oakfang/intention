@@ -34,9 +34,15 @@ module.exports = function env() {
     iterate();
   };
 
+  const concurrentHanler = ({ effects, world }, resolve, reject) =>
+    Promise.all(effects.map(e => run(e, world))).then(resolve).catch(reject);
+
   const run = (e, world) => new Promise((resolve, reject) => {
     world = Object.assign({
       'impure:call': (params, resolve, reject) => impureHandler(Object.assign({
+        world,
+      }, params), resolve, reject),
+      'impure:concurrent': (params, resolve, reject) => concurrentHanler(Object.assign({
         world,
       }, params), resolve, reject),
     }, world);
@@ -57,10 +63,15 @@ module.exports = function env() {
     gen,
   });
 
+  const concurrent = effects => effect('impure:concurrent', {
+    effects,
+  });
+
   return {
     ensure,
     effect,
     run,
     impure,
+    concurrent,
   }
 };

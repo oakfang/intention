@@ -48,9 +48,8 @@ const request = require('request');
 // - the object passed as the effect's second parameter
 // - a resolver function that marks the effect as successful with an optional value
 // - a rejecter function that marks the effect as failed with an optional value
-// You might notice that we don't explicitly handle `impure:call`, which is the effect type of
-// calling `impure` functions. This is because there's a default handler for it, which shouldn't
-// be overridden without a good reason.
+// You might notice that we don't explicitly handle any effect type which starts with
+// the `impure:` prefix. These are reserved for internal usage.
 module.exports = {
   'write:net': ({ options }, resolve, reject) => request(options, (err, resp, body) => {
     if (err) return reject(err);
@@ -92,6 +91,10 @@ It returns a function, that when called, does nothing but return an `effect` obj
 ### `env.run(effect, world)`
 This function converts an `effect` (which is a symbol for an intent) into a `Promise` (which is a symbol for an action), via the `world` parameter's interpretation of the `effect`.
 Should the `effect` type not be handled by the `world`, this function `rejects` immediately.
+
+### `env.concurrent(effects)`
+This function returns an effect of the `impure:concurrent` type,
+which has a default interpretation of interpreting all effects in its `effects` parameter, according to the same world that interprets itself, and resolves with an array of the return values in the same order as their respective effects. Basically, `concurrent` is to `effect` objects, as `Promise.all` is to `Promise` objects.
 
 ### The `world` object
 The `world` object passed to the `run` function is not magic, but a plain JS object. For every type of `effect` your `env` uses, you must include it as a property of the world, with a value that looks like so:
