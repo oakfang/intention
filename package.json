@@ -1,6 +1,6 @@
 {
-  "name": "feffect",
-  "version": "1.1.0",
+  "name": "intention",
+  "version": "1.0.0",
   "description": "Create truly pure functional runtime envs",
   "main": "index.js",
   "scripts": {
@@ -8,20 +8,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oakfang/feffect.git"
+    "url": "git+https://github.com/oakfang/intention.git"
   },
   "keywords": [
     "functional",
     "monads",
     "generator",
-    "effects"
+    "effects",
+    "intentions"
   ],
   "author": "Alon Niv",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/oakfang/feffect/issues"
+    "url": "https://github.com/oakfang/intention/issues"
   },
-  "homepage": "https://github.com/oakfang/feffect#readme",
+  "homepage": "https://github.com/oakfang/intention#readme",
   "devDependencies": {
     "ava": "^0.16.0",
     "nyc": "^8.3.0"

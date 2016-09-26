@@ -1,18 +1,18 @@
-module.exports = function env() {
-  const effects = new WeakMap();
-  const ensure = (e, type, params) => {
-    const eft = effects.get(e);
-    if (!type) return !!eft;
+function create() {
+  const intents = new WeakMap();
+  const ensure = (it, type, params) => {
+    const intent = intents.get(it);
+    if (!type) return !!intent;
     return (
-      eft.type === type &&
+      intent.type === type &&
       (!params ||
        Object.keys(params).reduce((flag, p) =>
-        flag && eft.values[p] === params[p], true)
+        flag && intent.values[p] === params[p], true)
       )
     );
   };
 
-  const impureHandler = ({ gen, args, world }, resolve, reject) => {
+  const impureHandler = ({ gen, args, reality }, resolve, reject) => {
     const it = gen(...args);
     let ret;
     const iterate = (val, err) => {
@@ -21,57 +21,61 @@ module.exports = function env() {
       } catch (e) {
         return reject(e);
       }
+
       if (!ret.done) {
         if (ensure(ret.value)) {
-          run(ret.value, world).then(iterate).catch(err => iterate(null, err));
+          interpret(ret.value, reality).then(iterate).catch(err => iterate(null, err));
         } else {
-          return reject(new Error('Do not yield non-effects from an impure function'));
+          return reject(new Error('Do not yield non-intents from an impure function'));
         }
       } else {
         return resolve(ret.value);
       }
     };
+
     iterate();
   };
 
-  const concurrentHanler = ({ effects, world }, resolve, reject) =>
-    Promise.all(effects.map(e => run(e, world))).then(resolve).catch(reject);
+  const concurrentHanler = ({ intents, reality }, resolve, reject) =>
+    Promise.all(intents.map(e => interpret(e, reality))).then(resolve).catch(reject);
 
-  const run = (e, world) => new Promise((resolve, reject) => {
-    world = Object.assign({
+  const interpret = (e, reality) => new Promise((resolve, reject) => {
+    reality = Object.assign({
       'impure:call': (params, resolve, reject) => impureHandler(Object.assign({
-        world,
+        reality,
       }, params), resolve, reject),
       'impure:concurrent': (params, resolve, reject) => concurrentHanler(Object.assign({
-        world,
+        reality,
       }, params), resolve, reject),
-    }, world);
-    const { type, values } = effects.get(e);
-    const handler = world[type];
-    if (!handler) return reject(new Error(`Unhandled effect type '${type}'`));
+    }, reality);
+    const { type, values } = intents.get(e);
+    const handler = reality[type];
+    if (!handler) return reject(new Error(`Unhandled intent type '${type}'`));
     return handler(values, resolve, reject);
   });
 
-  const effect = (type, values) => {
+  const intent = (type, values) => {
     const e =  Object.create(null);
-    effects.set(e, { type, values });
+    intents.set(e, { type, values });
     return e;
-  }
+  };
 
-  const impure = gen => (...args) => effect('impure:call', {
+  const impure = gen => (...args) => intent('impure:call', {
     args,
     gen,
   });
 
-  const concurrent = effects => effect('impure:concurrent', {
-    effects,
+  const concurrent = intents => intent('impure:concurrent', {
+    intents,
   });
 
   return {
     ensure,
-    effect,
-    run,
+    intent,
+    interpret,
     impure,
     concurrent,
-  }
+  };
 };
+
+module.exports =  Object.assign(create, create());

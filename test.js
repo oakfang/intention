@@ -1,10 +1,10 @@
 import test from 'ava';
-import env from '.';
+import create from '.';
 
-const { effect, impure, run, ensure, concurrent } = env();
+const { intent, impure, interpret, ensure, concurrent } = create();
 
-const readFile = (path, options) => effect('read:file', { path, options });
-const log = (...args) => effect('write:log', { args });
+const readFile = (path, options) => intent('read:file', { path, options });
+const log = (...args) => intent('write:log', { args });
 const numberOfLines = text => text.split('\n').length;
 
 const main = impure(function* () {
@@ -12,7 +12,7 @@ const main = impure(function* () {
   yield log(numberOfLines(content));
 });
 
-test('Basic effects are true', t => {
+test('Basic intents are true', t => {
   const eft = readFile('./foo');
   t.truthy(ensure(eft, 'read:file', {
     path: './foo',
@@ -20,50 +20,50 @@ test('Basic effects are true', t => {
   }));
 });
 
-test('Impure functions are effects', t => {
+test('Impure functions are intents', t => {
   const eft = main();
   t.truthy(ensure(eft, 'impure:call'));
 });
 
-test('Run fails on unknown effect types', async t => {
+test('interpret fails on unknown intent types', async t => {
   try {
-    await run(effect('meow'), {});
+    await interpret(intent('meow'), {});
     t.fail('Should fail');
   } catch (e) {
-    t.is(e.message, "Unhandled effect type 'meow'");
+    t.is(e.message, "Unhandled intent type 'meow'");
   }
 });
 
-test('Run works when no errors', async t => {
-  const world = {
+test('interpret works when no errors', async t => {
+  const reality = {
     'read:file': (params, resolve) => resolve('foo\nbar\nbuzz'),
     'write:log': ({ args }, resolve, reject) => args[0] === 3 ? resolve() : reject(),
   };
-  await run(main(), world);
+  await interpret(main(), reality);
   t.pass('All is well');
 });
 
-test('Run rejects when errors', async t => {
-  const world = {
+test('interpret rejects when errors', async t => {
+  const reality = {
     'read:file': (params, resolve) => resolve('foo\nbar\nbuzz'),
     'write:log': ({ args }, resolve, reject) => reject(5),
   };
   try {
-    await run(main(), world);
+    await interpret(main(), reality);
     t.fail('Should have failed');
   } catch (e) {
     t.is(e, 5);
   }
 });
 
-test('Impure should only yield effects', async t => {
+test('Impure should only yield intents', async t => {
   try {
-    await run(impure(function* () {
+    await interpret(impure(function* () {
       yield 5;
     })(), {});
     t.fail('Should have failed');
   } catch (e) {
-    t.is(e.message, 'Do not yield non-effects from an impure function');
+    t.is(e.message, 'Do not yield non-intents from an impure function');
   }
 });
 
@@ -72,34 +72,37 @@ test('Impure explicit return', async t => {
     const n = numberOfLines(yield readFile('./'));
     return n;
   });
-  const world = {
+  const reality = {
     'read:file': (params, resolve) => resolve('foo\nbar\nbuzz'),
   };
-  const n = await run(read(), world);
+  const n = await interpret(read(), reality);
   t.is(n, 3);
 });
 
-test('concurrent effect type', t => {
-  const effects = [effect('foo'), effect('bar')];
-  t.truthy(ensure(concurrent(effects), 'impure:concurrent', {
-    effects,
+test('concurrent intent type', t => {
+  const intents = [intent('foo'), intent('bar')];
+  t.truthy(ensure(concurrent(intents), 'impure:concurrent', {
+    intents,
   }));
 });
 
 test('concurrent resolution works', async t => {
-  const effects = [effect('foo'), effect('bar')];
-  const world = {
+  const intents = [intent('foo'), intent('bar')];
+  const reality = {
     foo(_, resolve) { resolve(5) },
     bar(_, resolve) { resolve(3) },
   };
-  let [foo, bar] = await run(concurrent(effects), world);
+  let [foo, bar] = await interpret(concurrent(intents), reality);
   t.is(foo, 5);
   t.is(bar, 3);
-  world.foo = (_, __, reject) => reject(7);
+  reality.foo = (_, __, reject) => reject(7);
   try {
-    await run(concurrent(effects), world);
+    await interpret(concurrent(intents), reality);
     t.fail('Should fail');
   } catch (e) {
     t.is(e, 7);
   }
 });
+
+test('Default realities clash', t =>
+  t.is(ensure(create.intent('meow')), false));
