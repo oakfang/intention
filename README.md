@@ -1,5 +1,6 @@
 # intentions
-## > The road to functional programming is paved with pure intentions
+>The road to functional programming is paved with pure intentions
+
 Create truly pure functional runtime environments
 
 ## The goals
