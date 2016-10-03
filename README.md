@@ -1,4 +1,4 @@
-# intentions
+# intention
 >The road to functional programming is paved with pure intentions
 
 Create truly pure functional runtime environments
@@ -9,7 +9,7 @@ Create truly pure functional runtime environments
 - Easy inter-op with "regular" JS
 
 ## Installation
-`npm i -S intentions`
+`npm i -S intention`
 
 ##Usage
 ```js
@@ -18,7 +18,7 @@ const {
   intent, // the most basic atom for `intention`
   impure,
   interpret,
-} = require('intentions');
+} = require('intention');
 const reality = require('./reality');
 
 // all this function does is to create an intention.
