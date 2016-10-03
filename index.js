@@ -1,17 +1,23 @@
-function create() {
-  const intents = new WeakMap();
-  const ensure = (it, type, params) => {
-    const intent = intents.get(it);
-    if (!type) return !!intent;
-    return (
-      intent.type === type &&
-      (!params ||
-       Object.keys(params).reduce((flag, p) =>
-        flag && intent.values[p] === params[p], true)
-      )
-    );
-  };
+function nestedFreezeProxy(object) {
+  return new Proxy(object, {
+    get(target, key) {
+      const item = target[key];
+      if (typeof item === 'object') {
+        return nestedFreezeProxy(item);
+      }
 
+      return item;
+    },
+
+    set() {
+      return false;
+    },
+  });
+}
+
+function create() {
+  const SCOPED_INTENT_SYM = Symbol('@@intent');
+  const isIntent = it => it.hasOwnProperty(SCOPED_INTENT_SYM);
   const impureHandler = ({ gen, args, reality }, resolve, reject) => {
     const it = gen(...args);
     let ret;
@@ -23,7 +29,7 @@ function create() {
       }
 
       if (!ret.done) {
-        if (ensure(ret.value)) {
+        if (isIntent(ret.value)) {
           interpret(ret.value, reality).then(iterate).catch(err => iterate(null, err));
         } else {
           return reject(new Error('Do not yield non-intents from an impure function'));
@@ -37,9 +43,9 @@ function create() {
   };
 
   const concurrentHanler = ({ intents, reality }, resolve, reject) =>
-    Promise.all(intents.map(e => interpret(e, reality))).then(resolve).catch(reject);
+    Promise.all(intents.map(it => interpret(it, reality))).then(resolve).catch(reject);
 
-  const interpret = (e, reality) => new Promise((resolve, reject) => {
+  const interpret = (it, reality) => new Promise((resolve, reject) => {
     reality = Object.assign({
       'impure:call': (params, resolve, reject) => impureHandler(Object.assign({
         reality,
@@ -48,17 +54,17 @@ function create() {
         reality,
       }, params), resolve, reject),
     }, reality);
-    const { type, values } = intents.get(e);
+    const { type, values } = it;
     const handler = reality[type];
     if (!handler) return reject(new Error(`Unhandled intent type '${type}'`));
     return handler(values, resolve, reject);
   });
 
-  const intent = (type, values) => {
-    const e =  Object.create(null);
-    intents.set(e, { type, values });
-    return e;
-  };
+  const intent = (type, values) => nestedFreezeProxy({
+    type,
+    values,
+    [SCOPED_INTENT_SYM]: true,
+  });
 
   const impure = gen => (...args) => intent('impure:call', {
     args,
@@ -70,7 +76,7 @@ function create() {
   });
 
   return {
-    ensure,
+    isIntent,
     intent,
     interpret,
     impure,

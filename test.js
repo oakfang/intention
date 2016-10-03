@@ -1,7 +1,7 @@
 import test from 'ava';
 import create from '.';
 
-const { intent, impure, interpret, ensure, concurrent } = create();
+const { intent, impure, interpret, isIntent, concurrent } = create();
 
 const readFile = (path, options) => intent('read:file', { path, options });
 const log = (...args) => intent('write:log', { args });
@@ -14,15 +14,27 @@ const main = impure(function* () {
 
 test('Basic intents are true', t => {
   const eft = readFile('./foo');
-  t.truthy(ensure(eft, 'read:file', {
-    path: './foo',
-    options: undefined,
-  }));
+  t.is(isIntent(eft), true);
+  t.is(eft.type, 'read:file');
+  t.is(eft.values.path, './foo');
+  t.is(eft.values.options, undefined);
 });
 
 test('Impure functions are intents', t => {
   const eft = main();
-  t.truthy(ensure(eft, 'impure:call'));
+  t.is(isIntent(eft), true);
+  t.is(eft.type, 'impure:call');
+});
+
+test('Intents are immutable', t => {
+  const eft = readFile('./foo');
+  t.is(isIntent(eft), true);
+  try {
+    eft.values.path = 'meow';
+    t.fail('Should fail');
+  } catch (e) {
+    t.is(eft.values.path, './foo');
+  }
 });
 
 test('interpret fails on unknown intent types', async t => {
@@ -61,6 +73,7 @@ test('Impure should only yield intents', async t => {
     await interpret(impure(function* () {
       yield 5;
     })(), {});
+
     t.fail('Should have failed');
   } catch (e) {
     t.is(e.message, 'Do not yield non-intents from an impure function');
@@ -72,6 +85,7 @@ test('Impure explicit return', async t => {
     const n = numberOfLines(yield readFile('./'));
     return n;
   });
+
   const reality = {
     'read:file': (params, resolve) => resolve('foo\nbar\nbuzz'),
   };
@@ -81,9 +95,10 @@ test('Impure explicit return', async t => {
 
 test('concurrent intent type', t => {
   const intents = [intent('foo'), intent('bar')];
-  t.truthy(ensure(concurrent(intents), 'impure:concurrent', {
-    intents,
-  }));
+  const conc = concurrent(intents);
+  t.is(isIntent(conc), true);
+  t.is(conc.type, 'impure:concurrent');
+  t.is(conc.values.intents[0].type, intents[0].type);
 });
 
 test('concurrent resolution works', async t => {
@@ -105,4 +120,4 @@ test('concurrent resolution works', async t => {
 });
 
 test('Default realities clash', t =>
-  t.is(ensure(create.intent('meow')), false));
+  t.is(isIntent(create.intent('meow')), false));

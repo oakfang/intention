@@ -69,22 +69,11 @@ with the API below. It **also** returns the default environment.
 
 ### `env.intent(intentType, [intentParameters])`
 This is the most basic part of `intention`. Every `intent` has a type, and an optional parameters object.
-Intentions are immutable, with no way to gain direct access to their properties (not even a `get` access), except via `ensure` (below).
+Intentions are immutable, with a `type` property and a `values` property, corresponding to this function's parameters.
 Every intent type should be handled explicitly as part of a `reality` object (again, below).
 
-### `env.ensure(intent, [type, [params]])`
-When provided a single parameter, this function simply ensures it is an intent belonging to this `env`. When given a `type`, it also checks for type equality. When also given `params`, it checks that for every key in the `params` object, its value equals (`===`) the intent's.
-
-Example:
-```js
-const eft = intent('read:file', { path: './foo' })
-ensure(eft) // true
-ensure(eft, 'read:file') // true
-ensure(eft, 'read:file', { path: './foo' }) // true
-ensure(eft, 'write:file') // false
-ensure(eft, 'read:file', { filePath: './foo' }) // false
-ensure(eft, 'read:file', { path: './_foo' }) // false
-```
+### `env.isIntent(intent)`
+This function simply returns `true` if `intent` is an intent belonging to this `env`.
 
 ### `env.impure(generatorFunction)`
 This function accepts a generator function that can `yield` `intent` objects, and get back their resolved values.
