@@ -58,6 +58,11 @@ function create() {
     const handler = reality[type];
     if (!handler) return reject(new Error(`Unhandled intent type '${type}'`));
     return handler(values, resolve, reject);
+  })
+  .then(value => value && isIntent(value) ? interpret(value, reality) : value)
+  .catch(err => {
+    if (err && isIntent(err)) return interpret(err, reality);
+    throw err;
   });
 
   const intent = (type, values) => nestedFreezeProxy({

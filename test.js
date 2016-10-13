@@ -121,3 +121,20 @@ test('concurrent resolution works', async t => {
 
 test('Default realities clash', t =>
   t.is(isIntent(create.intent('meow')), false));
+
+test('Nested intentions are unwrapped', async t => {
+  const reality = {
+    foo(_, resolve) { resolve(intent('bar')) },
+    bar(_, resolve) { resolve(3) },
+  };
+  t.is(await interpret(intent('foo'), reality), 3);
+});
+
+
+test('Nested intention-errors are unwrapped', async t => {
+  const reality = {
+    foo(_, _resolve, reject) { reject(intent('bar')) },
+    bar(_, resolve) { resolve(3) },
+  };
+  t.is(await interpret(intent('foo'), reality), 3);
+});
