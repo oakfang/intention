@@ -1,7 +1,7 @@
 import test from 'ava';
 import create from '.';
 
-const { intent, impure, interpret, isIntent, concurrent } = create();
+const { intent, impure, interpret, isIntent, concurrent, firstOf } = create();
 
 const readFile = (path, options) => intent('read:file', { path, options });
 const log = (...args) => intent('write:log', { args });
@@ -109,6 +109,31 @@ test('concurrent resolution works', async t => {
   };
   let [foo, bar] = await interpret(concurrent(intents), reality);
   t.is(foo, 5);
+  t.is(bar, 3);
+  reality.foo = (_, __, reject) => reject(7);
+  try {
+    await interpret(concurrent(intents), reality);
+    t.fail('Should fail');
+  } catch (e) {
+    t.is(e, 7);
+  }
+});
+
+test('firstOf intent type', t => {
+  const intents = [intent('foo'), intent('bar')];
+  const conc = firstOf(intents);
+  t.is(isIntent(conc), true);
+  t.is(conc.type, 'impure:firstOf');
+  t.is(conc.values.intents[0].type, intents[0].type);
+});
+
+test('firstOf resolution works', async t => {
+  const intents = [intent('foo'), intent('bar')];
+  const reality = {
+    foo(_, resolve) { setTimeout(resolve, 10, 5) },
+    bar(_, resolve) { resolve(3) },
+  };
+  let bar = await interpret(firstOf(intents), reality);
   t.is(bar, 3);
   reality.foo = (_, __, reject) => reject(7);
   try {

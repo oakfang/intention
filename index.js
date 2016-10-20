@@ -42,15 +42,21 @@ function create() {
     iterate();
   };
 
-  const concurrentHanler = ({ intents, reality }, resolve, reject) =>
+  const concurrentHandler = ({ intents, reality }, resolve, reject) =>
     Promise.all(intents.map(it => interpret(it, reality))).then(resolve).catch(reject);
+
+  const firstOfHandler = ({ intents, reality }, resolve, reject) =>
+    Promise.race(intents.map(it => interpret(it, reality))).then(resolve).catch(reject);
 
   const interpret = (it, reality) => new Promise((resolve, reject) => {
     reality = Object.assign({
       'impure:call': (params, resolve, reject) => impureHandler(Object.assign({
         reality,
       }, params), resolve, reject),
-      'impure:concurrent': (params, resolve, reject) => concurrentHanler(Object.assign({
+      'impure:concurrent': (params, resolve, reject) => concurrentHandler(Object.assign({
+        reality,
+      }, params), resolve, reject),
+      'impure:firstOf': (params, resolve, reject) => firstOfHandler(Object.assign({
         reality,
       }, params), resolve, reject),
     }, reality);
@@ -80,12 +86,17 @@ function create() {
     intents,
   });
 
+  const firstOf = intents => intent('impure:firstOf', {
+    intents,
+  });
+
   return {
     isIntent,
     intent,
     interpret,
     impure,
     concurrent,
+    firstOf,
   };
 };
 

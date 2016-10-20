@@ -87,6 +87,10 @@ Should the `intent` type not be handled by the `reality`, this function `rejects
 This function returns an intent of the `impure:concurrent` type,
 which has a default interpretation of interpreting all intents in its `intents` parameter, according to the same reality that interprets itself, and resolves with an array of the return values in the same order as their respective intents. Basically, `concurrent` is to `intent` objects, as `Promise.all` is to `Promise` objects.
 
+### `env.firstOf(intents)`
+This function returns an intent of the `impure:firstOf` type,
+which has a default interpretation of interpreting all intents in its `intents` parameter, according to the same reality that interprets itself, and resolves with the first resolved value of any of the intents. Basically, `firstOf` is to `intent` objects, as `Promise.race` is to `Promise` objects.
+
 ### The `reality` object
 The `reality` object passed to the `interpret` function is not magic, but a plain JS object. For every type of `intent` your `env` uses, you must include it as a property of the reality, with a value that looks like so:
 `(intentParams, resolve, reject) => intentParams.shouldWork ? resolve(10) : reject(new Error('Meow'))`
