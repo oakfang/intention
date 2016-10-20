@@ -2,7 +2,7 @@ function nestedFreezeProxy(object) {
   return new Proxy(object, {
     get(target, key) {
       const item = target[key];
-      if (typeof item === 'object') {
+      if (item && typeof item === 'object') {
         return nestedFreezeProxy(item);
       }
 
