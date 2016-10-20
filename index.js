@@ -17,7 +17,7 @@ function nestedFreezeProxy(object) {
 
 function create() {
   const SCOPED_INTENT_SYM = Symbol('@@intent');
-  const isIntent = it => it.hasOwnProperty(SCOPED_INTENT_SYM);
+  const isIntent = it => it && it.hasOwnProperty(SCOPED_INTENT_SYM);
   const impureHandler = ({ gen, args, reality }, resolve, reject) => {
     const it = gen(...args);
     let ret;

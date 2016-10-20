@@ -37,6 +37,17 @@ test('Intents are immutable', t => {
   }
 });
 
+test('Intents are immutable [non-objects]', t => {
+  const eft = intent('foo', 5);
+  t.is(isIntent(eft), true);
+  try {
+    eft.values = 'meow';
+    t.fail('Should fail');
+  } catch (e) {
+    t.is(eft.values, 5);
+  }
+});
+
 test('interpret fails on unknown intent types', async t => {
   try {
     await interpret(intent('meow'), {});
