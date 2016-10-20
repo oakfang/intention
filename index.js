@@ -1,30 +1,42 @@
+const UNLOCK_SYM = Symbol('@@unlock');
+
 function nestedFreezeProxy(object) {
   return new Proxy(object, {
     get(target, key) {
       const item = target[key];
-      if (item && typeof item === 'object') {
+      if (item && typeof item === 'object' && !target[UNLOCK_SYM]) {
         return nestedFreezeProxy(item);
       }
 
       return item;
     },
 
-    set() {
+    set(target, key, value) {
+      if (key === UNLOCK_SYM || target[UNLOCK_SYM]) {
+        target[key] = value;
+        return true;
+      }
+
       return false;
     },
   });
 }
 
+const toggleLock = (args, setLock) => args.map(item =>
+  item && typeof item === 'object' ?
+    Object.assign(item, { [UNLOCK_SYM]: !setLock }) : item);
+
 function create() {
   const SCOPED_INTENT_SYM = Symbol('@@intent');
   const isIntent = it => it && it.hasOwnProperty(SCOPED_INTENT_SYM);
   const impureHandler = ({ gen, args, reality }, resolve, reject) => {
-    const it = gen(...args);
+    const it = gen(...toggleLock(args, false));
     let ret;
     const iterate = (val, err) => {
       try {
         ret = err ? it.throw(err) : it.next(val);
       } catch (e) {
+        toggleLock(args, true);
         return reject(e);
       }
 
@@ -32,9 +44,11 @@ function create() {
         if (isIntent(ret.value)) {
           interpret(ret.value, reality).then(iterate).catch(err => iterate(null, err));
         } else {
+          toggleLock(args, true);
           return reject(new Error('Do not yield non-intents from an impure function'));
         }
       } else {
+        toggleLock(args, true);
         return resolve(ret.value);
       }
     };

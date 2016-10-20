@@ -12,6 +12,11 @@ const main = impure(function* () {
   yield log(numberOfLines(content));
 });
 
+const mutator = impure(function* (obj, n) {
+  obj.foo = 5;
+  return n + 1;
+});
+
 test('Basic intents are true', t => {
   const eft = readFile('./foo');
   t.is(isIntent(eft), true);
@@ -24,6 +29,19 @@ test('Impure functions are intents', t => {
   const eft = main();
   t.is(isIntent(eft), true);
   t.is(eft.type, 'impure:call');
+});
+
+test('Impure functions can mutate their params', async t => {
+  const obj = {};
+  const call = mutator(obj, 3);
+  t.is(await interpret(call, {}), 4);
+  t.is(obj.foo, 5);
+  try {
+    call.values.args[0].foo = 4;
+    t.fail('Should have failed');
+  } catch (e) {
+    t.pass('Locked');
+  }
 });
 
 test('Intents are immutable', t => {

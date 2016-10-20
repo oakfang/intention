@@ -1,6 +1,6 @@
 {
   "name": "intention",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Create truly pure functional runtime envs",
   "main": "index.js",
   "scripts": {
