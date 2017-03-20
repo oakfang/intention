@@ -64,8 +64,8 @@ module.exports = {
 
 ## API
 ### `require('intention')`
-Requiring `intention` returns a function that, when called, creates an entirely new functional environment,
-with the API below. It **also** returns the default environment.
+Requiring `intention` returns a functional environment,
+with the API below.
 
 ### `env.intent(intentType, [intentParameters])`
 This is the most basic part of `intention`. Every `intent` has a type, and an optional parameters object.

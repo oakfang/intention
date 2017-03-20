@@ -1,117 +1,82 @@
-const UNLOCK_SYM = Symbol('@@unlock');
+const SCOPED_INTENT_SYM = Symbol('@@intent');
+const isIntent = it => it && it.hasOwnProperty(SCOPED_INTENT_SYM);
+const impureHandler = ({ gen, args, reality }, resolve, reject) => {
+  const it = gen(...args);
+  let ret;
+  const iterate = (val, err) => {
+    try {
+      ret = err ? it.throw(err) : it.next(val);
+    } catch (e) {
+      return reject(e);
+    }
 
-function nestedFreezeProxy(object) {
-  return new Proxy(object, {
-    get(target, key) {
-      const item = target[key];
-      if (item && typeof item === 'object' && !target[UNLOCK_SYM]) {
-        return nestedFreezeProxy(item);
-      }
-
-      return item;
-    },
-
-    set(target, key, value) {
-      if (key === UNLOCK_SYM || target[UNLOCK_SYM]) {
-        target[key] = value;
-        return true;
-      }
-
-      return false;
-    },
-  });
-}
-
-const toggleLock = (args, setLock) => args.map(item =>
-  item && typeof item === 'object' ?
-    Object.assign(item, { [UNLOCK_SYM]: !setLock }) : item);
-
-function create() {
-  const SCOPED_INTENT_SYM = Symbol('@@intent');
-  const isIntent = it => it && it.hasOwnProperty(SCOPED_INTENT_SYM);
-  const impureHandler = ({ gen, args, reality }, resolve, reject) => {
-    const it = gen(...toggleLock(args, false));
-    let ret;
-    const iterate = (val, err) => {
-      try {
-        ret = err ? it.throw(err) : it.next(val);
-      } catch (e) {
-        toggleLock(args, true);
-        return reject(e);
-      }
-
-      if (!ret.done) {
-        if (isIntent(ret.value)) {
-          interpret(ret.value, reality).then(iterate).catch(err => iterate(null, err));
-        } else {
-          toggleLock(args, true);
-          return reject(new Error('Do not yield non-intents from an impure function'));
-        }
+    if (!ret.done) {
+      if (isIntent(ret.value)) {
+        interpret(ret.value, reality).then(iterate).catch(err => iterate(null, err));
       } else {
-        toggleLock(args, true);
-        return resolve(ret.value);
+        return reject(new Error('Do not yield non-intents from an impure function'));
       }
-    };
-
-    iterate();
+    } else {
+      return resolve(ret.value);
+    }
   };
 
-  const concurrentHandler = ({ intents, reality }, resolve, reject) =>
-    Promise.all(intents.map(it => interpret(it, reality))).then(resolve).catch(reject);
-
-  const firstOfHandler = ({ intents, reality }, resolve, reject) =>
-    Promise.race(intents.map(it => interpret(it, reality))).then(resolve).catch(reject);
-
-  const interpret = (it, reality) => new Promise((resolve, reject) => {
-    reality = Object.assign({
-      'impure:call': (params, resolve, reject) => impureHandler(Object.assign({
-        reality,
-      }, params), resolve, reject),
-      'impure:concurrent': (params, resolve, reject) => concurrentHandler(Object.assign({
-        reality,
-      }, params), resolve, reject),
-      'impure:firstOf': (params, resolve, reject) => firstOfHandler(Object.assign({
-        reality,
-      }, params), resolve, reject),
-    }, reality);
-    const { type, values } = it;
-    const handler = reality[type];
-    if (!handler) return reject(new Error(`Unhandled intent type '${type}'`));
-    return handler(values, resolve, reject);
-  })
-  .then(value => value && isIntent(value) ? interpret(value, reality) : value)
-  .catch(err => {
-    if (err && isIntent(err)) return interpret(err, reality);
-    throw err;
-  });
-
-  const intent = (type, values) => nestedFreezeProxy({
-    type,
-    values,
-    [SCOPED_INTENT_SYM]: true,
-  });
-
-  const impure = gen => (...args) => intent('impure:call', {
-    args,
-    gen,
-  });
-
-  const concurrent = intents => intent('impure:concurrent', {
-    intents,
-  });
-
-  const firstOf = intents => intent('impure:firstOf', {
-    intents,
-  });
-
-  return {
-    isIntent,
-    intent,
-    interpret,
-    impure,
-    concurrent,
-    firstOf,
-  };
+  iterate();
 };
 
-module.exports =  Object.assign(create, create());
+const concurrentHandler = ({ intents, reality }, resolve, reject) =>
+  Promise.all(intents.map(it => interpret(it, reality))).then(resolve).catch(reject);
+
+const firstOfHandler = ({ intents, reality }, resolve, reject) =>
+  Promise.race(intents.map(it => interpret(it, reality))).then(resolve).catch(reject);
+
+const interpret = (it, reality) => new Promise((resolve, reject) => {
+  reality = Object.assign({
+    'impure:call': (params, resolve, reject) => impureHandler(Object.assign({
+      reality,
+    }, params), resolve, reject),
+    'impure:concurrent': (params, resolve, reject) => concurrentHandler(Object.assign({
+      reality,
+    }, params), resolve, reject),
+    'impure:firstOf': (params, resolve, reject) => firstOfHandler(Object.assign({
+      reality,
+    }, params), resolve, reject),
+  }, reality);
+  const { type, values } = it;
+  const handler = reality[type];
+  if (!handler) return reject(new Error(`Unhandled intent type '${type}'`));
+  return handler(values, resolve, reject);
+})
+.then(value => value && isIntent(value) ? interpret(value, reality) : value)
+.catch(err => {
+  if (err && isIntent(err)) return interpret(err, reality);
+  throw err;
+});
+
+const intent = (type, values) => ({
+  type,
+  values,
+  [SCOPED_INTENT_SYM]: true,
+});
+
+const impure = gen => (...args) => intent('impure:call', {
+  args,
+  gen,
+});
+
+const concurrent = intents => intent('impure:concurrent', {
+  intents,
+});
+
+const firstOf = intents => intent('impure:firstOf', {
+  intents,
+});
+
+module.exports = {
+  isIntent,
+  intent,
+  interpret,
+  impure,
+  concurrent,
+  firstOf,
+};

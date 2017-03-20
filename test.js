@@ -1,7 +1,5 @@
 import test from 'ava';
-import create from '.';
-
-const { intent, impure, interpret, isIntent, concurrent, firstOf } = create();
+import { intent, impure, interpret, isIntent, concurrent, firstOf } from '.';
 
 const readFile = (path, options) => intent('read:file', { path, options });
 const log = (...args) => intent('write:log', { args });
@@ -29,41 +27,6 @@ test('Impure functions are intents', t => {
   const eft = main();
   t.is(isIntent(eft), true);
   t.is(eft.type, 'impure:call');
-});
-
-test('Impure functions can mutate their params', async t => {
-  const obj = {};
-  const call = mutator(obj, 3);
-  t.is(await interpret(call, {}), 4);
-  t.is(obj.foo, 5);
-  try {
-    call.values.args[0].foo = 4;
-    t.fail('Should have failed');
-  } catch (e) {
-    t.pass('Locked');
-  }
-});
-
-test('Intents are immutable', t => {
-  const eft = readFile('./foo');
-  t.is(isIntent(eft), true);
-  try {
-    eft.values.path = 'meow';
-    t.fail('Should fail');
-  } catch (e) {
-    t.is(eft.values.path, './foo');
-  }
-});
-
-test('Intents are immutable [nulls]', t => {
-  const eft = intent('foo', null);
-  t.is(isIntent(eft), true);
-  try {
-    eft.values = 'meow';
-    t.fail('Should fail');
-  } catch (e) {
-    t.is(eft.values, null);
-  }
 });
 
 test('interpret fails on unknown intent types', async t => {
@@ -172,9 +135,6 @@ test('firstOf resolution works', async t => {
     t.is(e, 7);
   }
 });
-
-test('Default realities clash', t =>
-  t.is(isIntent(create.intent('meow')), false));
 
 test('Nested intentions are unwrapped', async t => {
   const reality = {
